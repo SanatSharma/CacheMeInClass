@@ -1,0 +1,7 @@
+__pycache__
+*.pckle
+*.npy
+*.t7
+*.pickle
+*.caffemodel
+*.prototxt
