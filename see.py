@@ -18,7 +18,7 @@ def arg_parse():
 	    help="path to OpenCV's deep learning face embedding model")
     parser.add_argument("--confidence", type=float, default=0.5,
         help="minimum probability to filter weak detections")
-    parser.add_argument('--batch_size', type=int, default=6, help='Batch size')
+    parser.add_argument('--batch_size', type=int, default=3, help='Batch size')
     parser.add_argument('--test_batch_size', type=int, default=1, help='Test Batch size')
 
     args = parser.parse_args()
@@ -30,13 +30,13 @@ def main_handler(args):
     detector = cv2.dnn.readNetFromCaffe(args.detector_proto_path, args.detector_model_path)
     embedding_model = cv2.dnn.readNetFromTorch(args.embedding_model)
 
-    model = Embedding(detector, embedding_model)
+    model = Embedding(detector, embedding_model, args.confidence)
 
     print("Training")
     trained_model = train_network(train_data, model, student_indexer)
 
-    #print("Evaluating")
-    #trained_model.evaluate(test_data)
+    print("Evaluating")
+    trained_model.evaluate(test_data)
 
 if __name__ == '__main__':
     args = arg_parse()
