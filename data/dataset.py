@@ -1,6 +1,7 @@
 import numpy as np
 from imutils import paths
-import imutils
+from PIL import Image
+import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 import os
@@ -28,12 +29,9 @@ class FaceDataset(Dataset):
     def __len__(self):
         return len(self.examples)
 
-    def __get_item__(self, idx):
-        img = Image.open(self.examples[i].x)
-        if img.getbands() != ('R','G','B'):
-            img = img.convert('RGB')
-        label = self.examples[i].y
-        return (img, label)
+    def __getitem__(self, idx):
+        sample= {'path': self.image_indexer.get_object(self.examples[idx].x), 'label':self.examples[idx].y}
+        return sample
     
     def index_images(self, data_path):
         image_paths = list(paths.list_images(data_path))
@@ -64,4 +62,4 @@ def create_dataset(data_path, args, cutoff=.8, shuffle=True):
                                             sampler=train_sampler)
     test_loader = torch.utils.data.DataLoader(dataset, batch_size=args.test_batch_size,
                                                 sampler=valid_sampler)
-    return train_loader, test_loader
+    return train_loader, test_loader, dataset.student_indexer
