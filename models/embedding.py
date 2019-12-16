@@ -10,7 +10,7 @@ class Embedding:
     def forward(image_path):
         image = cv2.imread(image_path)
         image = imutils.resize(image, width=600)
-    	(h, w) = image.shape[:2]
+        (h, w) = image.shape[:2]
 
         # construct a blob from the image
         image_blob = cv2.dnn.blobFromImage(
@@ -22,8 +22,9 @@ class Embedding:
 
         if len(detections)>0:
             print(detections)
-            
+
 
 
 def train_network(train_data, model, indexer):
     pass
+
