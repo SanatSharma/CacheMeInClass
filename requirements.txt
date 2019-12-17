@@ -6,3 +6,4 @@ tqdm
 sklearn
 torch
 PIL
+face_recognition

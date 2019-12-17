@@ -22,6 +22,7 @@ def arg_parse():
         help="minimum probability to filter weak detections")
     parser.add_argument('--batch_size', type=int, default=3, help='Batch size')
     parser.add_argument('--test_batch_size', type=int, default=1, help='Test Batch size')
+    parser.add_argument('--dlib_emb', default=False, action='store_true', help='Run prebuilt dlib embeddings or not')
 
     args = parser.parse_args()
     return args
@@ -35,8 +36,12 @@ def main_handler(args):
     # Model with face alignment
     #model = Embedding(detector, embedding_model, args.confidence, args.face_landmark)
 
-    # Model without face alignment
-    model = Embedding(detector,embedding_model, args.confidence)
+    if args.dlib_emb:
+        # Model with dlib embeddings
+        model = Embedding(detector, embedding_model, args.confidence, prebuilt=True)
+    else:
+        # Model without face alignment
+        model = Embedding(detector,embedding_model, args.confidence)
 
     print("Training")
     trained_model = train_network(train_data, model, student_indexer)
