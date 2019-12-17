@@ -1,19 +1,47 @@
 import numpy as np
 import cv2
 import imutils
+from imutils.face_utils import FaceAligner, rect_to_bb
 from tqdm import tqdm
 from sklearn.svm import SVC
+from utils import *
+import dlib
 
 class Embedding:
-    def __init__(self, detector, embedding, confidence=.5):
+    def __init__(self, detector, embedding, confidence=.5, face_landmark=None):
         self.detector = detector
         self.embedding = embedding
         self.confidence = confidence
+        self.face_aligner = None
+        if face_landmark:
+            face_landmark =  dlib.shape_predictor(face_landmark)
+            self.fd = dlib.get_frontal_face_detector()
+            self.face_aligner = FaceAligner(face_landmark)
     
     def forward(self,image_path):
         image = cv2.imread(image_path)
 
         image = imutils.resize(image, width=600)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        if self.face_aligner:            
+            rects = self.fd(gray,2)
+            if len(rects)==0:
+                return np.zeros(128)
+
+            for rect in rects:
+                face_aligned = self.face_aligner.align(image, gray, rect)
+                (x, y, w, h) = rect_to_bb(rect)
+                face = imutils.resize(image[y:y + h, x:x + w], width=256)
+                #cv2.imshow('original', face)
+                #cv2.imshow('new', face_aligned)
+                #cv2.waitKey(0)
+                faceBlob = cv2.dnn.blobFromImage(face_aligned, 1.0 / 255,
+                    (96, 96), (0, 0, 0), swapRB=True, crop=False)
+                self.embedding.setInput(faceBlob)
+                vec = self.embedding.forward()
+                return vec.flatten()
+
         (h, w) = image.shape[:2]
 
         # construct a blob from the image
@@ -38,7 +66,8 @@ class Embedding:
                 (startX, startY, endX, endY) = box.astype("int")
 
                 # extract the face ROI and grab the ROI dimensions
-                face = image[startY:endY, startX:endX]
+                face = image[startY:endY, startX:endX]                
+
                 (fH, fW) = face.shape[:2]
 
                 # ensure the face width and height are sufficiently large
@@ -55,7 +84,6 @@ class Embedding:
                 return vec.flatten()
             
         return np.zeros(128)
-
 
 class TrainedModel:
     def __init__(self, embedding_model, recognizer, indexer):
@@ -93,12 +121,15 @@ class TrainedModel:
 def train_network(train_data, model, indexer):
     embeddings = []
     labels = []
+    print("Train size", len(train_data))
     for idx, data in tqdm(enumerate(train_data), total=len(train_data)):
         images = data['path']
-        labels.extend(data['label'])
+        l = data['label']
+        labels.extend([label.item() for label in l])
         embeddings.extend([model.forward(path) for path in images])
     
     # Train net
+    print(labels)
     recognizer = SVC(C=1.0, kernel="linear", probability=True)
     recognizer.fit(embeddings, labels)
 
