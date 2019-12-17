@@ -2,13 +2,14 @@ import numpy as np
 import cv2
 import imutils
 from imutils.face_utils import FaceAligner, rect_to_bb
+import face_recognition
 from tqdm import tqdm
 from sklearn.svm import SVC
 from utils import *
 import dlib
 
 class Embedding:
-    def __init__(self, detector, embedding, confidence=.5, face_landmark=None):
+    def __init__(self, detector, embedding, confidence=.5, face_landmark=None, prebuilt=False):
         self.detector = detector
         self.embedding = embedding
         self.confidence = confidence
@@ -17,12 +18,22 @@ class Embedding:
             face_landmark =  dlib.shape_predictor(face_landmark)
             self.fd = dlib.get_frontal_face_detector()
             self.face_aligner = FaceAligner(face_landmark)
+        self.prebuilt = prebuilt
     
     def forward(self,image_path):
         image = cv2.imread(image_path)
 
         image = imutils.resize(image, width=600)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        if self.prebuilt:
+            rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    
+            boxes = face_recognition.face_locations(rgb,model='hog')
+            embeddings = face_recognition.face_encodings(rgb, boxes)
+            if len(embeddings)==0:
+                return np.zeros(128)
+            return embeddings[0].flatten()
 
         if self.face_aligner:            
             rects = self.fd(gray,2)
@@ -112,10 +123,10 @@ class TrainedModel:
                     correct += 1
                 total += 1
                 if show_bounding:
-                    for i, img in enumerate(images):
-                        name = self.indexer.get_object(p.item())
-                        calculate_bounding_box(img, self.embedding_model.detector, name)           
-        
+                    val = np.max(probs)*100
+                    name = self.indexer.get_object(p.item())
+                    calculate_bounding_box(images[i], self.embedding_model.detector, name,val)           
+    
         print("Correctness", str(correct) + "/" + str(total) + ": " + str(round(correct/total, 5)))
 
 def train_network(train_data, model, indexer):
@@ -135,7 +146,7 @@ def train_network(train_data, model, indexer):
 
     return TrainedModel(model,recognizer, indexer)
 
-def calculate_bounding_box(image_path, detector, name):
+def calculate_bounding_box(image_path, detector, name, prob):
     image = cv2.imread(image_path)
     image = imutils.resize(image, width=600)
     (h, w) = image.shape[:2]
@@ -154,11 +165,11 @@ def calculate_bounding_box(image_path, detector, name):
     box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
     (startX, startY, endX, endY) = box.astype("int")
 
-    text = "{}".format(name)
+    text = "{}: {:.2f}%".format(name, prob)
     y = startY - 10 if startY - 10 > 10 else startY + 10
     cv2.rectangle(image, (startX, startY), (endX, endY), (0, 0, 255), 2)
     cv2.putText(image, text, (startX, y),
-        cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 2)
+        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
     cv2.imshow("Image", image)
     cv2.waitKey(0)
