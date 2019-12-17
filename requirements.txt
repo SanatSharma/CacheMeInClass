@@ -1,0 +1,8 @@
+opencv-python
+dlib
+numpy
+imutils
+tqdm
+sklearn
+torch
+PIL
