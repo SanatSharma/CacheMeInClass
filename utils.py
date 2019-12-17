@@ -1,3 +1,5 @@
+import cv2
+
 '''
  Create a bijection betweeen int and object. May be used for reverse indexing
 '''
@@ -33,4 +35,3 @@ class Indexer(object):
         self.objs_to_ints[obj] = new_idx
         self.ints_to_objs[new_idx] = obj
         return new_idx
-

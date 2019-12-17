@@ -16,6 +16,8 @@ def arg_parse():
         help='path to caffe prototxt path')
     parser.add_argument('--embedding_model', default='models/openface_nn4.small2.v1.t7', type=str,
 	    help="path to OpenCV's deep learning face embedding model")
+    parser.add_argument('--face_landmark', default='models/shape_predictor_68_face_landmarks.dat',
+        type=str, help="path to dlbib Face Landmark")
     parser.add_argument("--confidence", type=float, default=0.5,
         help="minimum probability to filter weak detections")
     parser.add_argument('--batch_size', type=int, default=3, help='Batch size')
@@ -30,12 +32,17 @@ def main_handler(args):
     detector = cv2.dnn.readNetFromCaffe(args.detector_proto_path, args.detector_model_path)
     embedding_model = cv2.dnn.readNetFromTorch(args.embedding_model)
 
-    model = Embedding(detector, embedding_model, args.confidence)
+    # Model with face alignment
+    #model = Embedding(detector, embedding_model, args.confidence, args.face_landmark)
+
+    # Model without face alignment
+    model = Embedding(detector,embedding_model, args.confidence)
 
     print("Training")
     trained_model = train_network(train_data, model, student_indexer)
 
     print("Evaluating")
+    #trained_model.evaluate(test_data, show_bounding=False)
     trained_model.evaluate(test_data)
 
 if __name__ == '__main__':
